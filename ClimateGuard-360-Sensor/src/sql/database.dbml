@@ -1,0 +1,74 @@
+Table WeatherStations {
+    station_id VARCHAR(17) [pk]
+    name VARCHAR(100) [not null]
+    description TEXT
+    mode VARCHAR(10) [not null, note: 'Must be one of Indoor, Outdoor, Hybrid']
+
+    indexes {
+        mode
+    }
+}
+
+Table Temperatures {
+    temp_id INT [pk, increment]
+    station_id VARCHAR(17) [ref: > WeatherStations.station_id]
+    value DECIMAL(5, 2)
+    date DATE
+    time TIME
+}
+
+Table Humidity {
+    humidity_id INT [pk, increment]
+    station_id VARCHAR(17) [ref: > WeatherStations.station_id]
+    value DECIMAL(5, 2)
+    date DATE
+    time TIME
+}
+
+Table Pressure {
+    pressure_id INT [pk, increment]
+    station_id VARCHAR(17) [ref: > WeatherStations.station_id]
+    value DECIMAL(10, 2)
+    date DATE
+    time TIME
+}
+
+Table LightIntensity {
+    light_id INT [pk, increment]
+    station_id VARCHAR(17) [ref: > WeatherStations.station_id]
+    value DECIMAL(10, 2)
+    date DATE
+    time TIME
+}
+
+Table AirQuality {
+    air_quality_id INT [pk, increment]
+    station_id VARCHAR(17) [ref: > WeatherStations.station_id]
+    value INT
+    date DATE
+    time TIME
+}
+
+Table RainSensor {
+    rain_id INT [pk, increment]
+    station_id VARCHAR(17) [ref: > WeatherStations.station_id]
+    value BOOLEAN
+    date DATE
+    time TIME
+}
+
+Table UVIntensity {
+    uv_id INT [pk, increment]
+    station_id VARCHAR(17) [ref: > WeatherStations.station_id]
+    value DECIMAL(5, 2)
+    date DATE
+    time TIME
+}
+
+Table SoundLevel {
+    sound_id INT [pk, increment]
+    station_id VARCHAR(17) [ref: > WeatherStations.station_id]
+    value DECIMAL(5, 2)
+    date DATE
+    time TIME
+}

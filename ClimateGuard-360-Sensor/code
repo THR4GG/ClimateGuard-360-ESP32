@@ -1,0 +1,245 @@
+// Datei: EnvironmentConfig.h
+// -------------------------------------
+#ifndef ENVIRONMENTCONFIG_H
+#define ENVIRONMENTCONFIG_H
+
+// Schlüsseldefinitionen für die Wetterdaten
+#define KEY_TEMPERATURE "TEMP"
+#define KEY_PRESSURE "PRESSURE"
+#define KEY_HUMIDITY "HUMID"
+#define KEY_AIRQUALITY "AIR_QUALITY"
+#define KEY_LIGHTINTENSITY "LIGHT"
+#define KEY_RAINSENSOR "RAIN"
+
+// Schlüsseldefinition für den Modus
+#define KEY_MODE "MODE"
+
+// Trennzeichen für die gesendeten Daten
+#define DATA_SEPARATOR "/"
+
+#endif
+// -------------------------------------
+
+// Datei: BluetoothControllerSender.h
+// -------------------------------------
+#ifndef BLUETOOTHCONTROLLERSENDER_H
+#define BLUETOOTHCONTROLLERSENDER_H
+
+#include <Arduino.h>
+#include "BluetoothSerial.h"
+#include "EnvironmentConfig.h"
+
+class BluetoothControllerSender {
+public:
+    BluetoothControllerSender();
+    void setup();
+    void sendWeatherData(float temperature, float pressure, float humidity, float airQuality, float lightIntensity, bool rainSensor);
+
+private:
+    BluetoothSerial SerialBT;
+};
+
+#endif
+// -------------------------------------
+
+// Datei: BluetoothControllerSender.cpp
+// -------------------------------------
+#include "BluetoothControllerSender.h"
+
+BluetoothControllerSender::BluetoothControllerSender() {}
+
+void BluetoothControllerSender::setup() {
+    SerialBT.begin("ESP32Sensor");
+}
+
+void BluetoothControllerSender::sendWeatherData(float temperature, float pressure, float humidity, float airQuality, float lightIntensity, bool rainSensor) {
+    if (SerialBT.connected()) {
+        String data = String(temperature) + DATA_SEPARATOR +
+                      String(pressure) + DATA_SEPARATOR +
+                      String(humidity) + DATA_SEPARATOR +
+                      String(airQuality) + DATA_SEPARATOR +
+                      String(lightIntensity) + DATA_SEPARATOR +
+                      (rainSensor ? "1" : "0");
+        
+        SerialBT.println(data);
+        Serial.println("Wetterdaten gesendet: " + data);
+
+        // Warten auf ACK (Mode)
+        while (!SerialBT.available()) {}
+        String mode = SerialBT.readStringUntil('\n');
+        Serial.println("Empfangener Modus: " + mode);
+    }
+}
+// -------------------------------------
+
+// Datei: BluetoothControllerReceiver.h
+// -------------------------------------
+#ifndef BLUETOOTHCONTROLLERRECEIVER_H
+#define BLUETOOTHCONTROLLERRECEIVER_H
+
+#include <Arduino.h>
+#include "BluetoothSerial.h"
+#include "EnvironmentConfig.h"
+
+class BluetoothControllerReceiver {
+public:
+    BluetoothControllerReceiver();
+    void setup();
+    void receiveWeatherData();
+    float getTemperature();
+    float getPressure();
+    float getHumidity();
+    float getAirQuality();
+    float getLightIntensity();
+    bool getRainSensor();
+
+private:
+    BluetoothSerial SerialBT;
+    float temperature;
+    float pressure;
+    float humidity;
+    float airQuality;
+    float lightIntensity;
+    bool rainSensor;
+
+    void parseData(String data);
+    void sendMode();
+};
+
+#endif
+// -------------------------------------
+
+// Datei: BluetoothControllerReceiver.cpp
+// -------------------------------------
+#include "BluetoothControllerReceiver.h"
+
+BluetoothControllerReceiver::BluetoothControllerReceiver() 
+    : temperature(0), pressure(0), humidity(0), airQuality(0), lightIntensity(0), rainSensor(false) {}
+
+void BluetoothControllerReceiver::setup() {
+    SerialBT.begin("ESP32Actuator");
+}
+
+void BluetoothControllerReceiver::receiveWeatherData() {
+    if (SerialBT.available()) {
+        String data = SerialBT.readStringUntil('\n');
+        Serial.println("Empfangene Wetterdaten: " + data);
+        parseData(data);
+        
+        // Mode sofort nach Empfang der Daten senden
+        sendMode();
+    }
+}
+
+void BluetoothControllerReceiver::parseData(String data) {
+    int index = 0;
+    int startIndex = 0;
+    String tokens[6];
+
+    while (index < 6) {
+        int endIndex = data.indexOf(DATA_SEPARATOR, startIndex);
+        if (endIndex == -1) endIndex = data.length();
+        tokens[index] = data.substring(startIndex, endIndex);
+        startIndex = endIndex + 1;
+        index++;
+    }
+
+    temperature = tokens[0].toFloat();
+    pressure = tokens[1].toFloat();
+    humidity = tokens[2].toFloat();
+    airQuality = tokens[3].toFloat();
+    lightIntensity = tokens[4].toFloat();
+    rainSensor = (tokens[5] == "1");
+}
+
+void BluetoothControllerReceiver::sendMode() {
+    String mode = "Cooling";  // Beispiel für Mode, kann angepasst werden
+    SerialBT.println(mode);
+    Serial.println("Gesendeter Modus (ACK): " + mode);
+}
+
+float BluetoothControllerReceiver::getTemperature() {
+    return temperature;
+}
+
+float BluetoothControllerReceiver::getPressure() {
+    return pressure;
+}
+
+float BluetoothControllerReceiver::getHumidity() {
+    return humidity;
+}
+
+float BluetoothControllerReceiver::getAirQuality() {
+    return airQuality;
+}
+
+float BluetoothControllerReceiver::getLightIntensity() {
+    return lightIntensity;
+}
+
+bool BluetoothControllerReceiver::getRainSensor() {
+    return rainSensor;
+}
+// -------------------------------------
+
+// Datei: main_sender.ino
+// -------------------------------------
+#include <Arduino.h>
+#include "BluetoothControllerSender.h"
+
+BluetoothControllerSender sender;
+
+void setup() {
+    Serial.begin(115200);
+    sender.setup();
+}
+
+void loop() {
+    // Beispielhafte Sensordaten
+    float temperature = 25.5;
+    float pressure = 1013.25;
+    float humidity = 60.0;
+    float airQuality = 75.0;
+    float lightIntensity = 450.0;
+    bool rainSensor = false;
+
+    // Wetterdaten senden
+    sender.sendWeatherData(temperature, pressure, humidity, airQuality, lightIntensity, rainSensor);
+    
+    delay(5000);  // Warte 5 Sekunden vor dem nächsten Senden
+}
+// -------------------------------------
+
+// Datei: main_receiver.ino
+// -------------------------------------
+#include <Arduino.h>
+#include "BluetoothControllerReceiver.h"
+
+BluetoothControllerReceiver receiver;
+
+void setup() {
+    Serial.begin(115200);
+    receiver.setup();
+}
+
+void loop() {
+    receiver.receiveWeatherData();
+
+    // Empfangene Daten anzeigen
+    Serial.print("Temperatur: ");
+    Serial.println(receiver.getTemperature());
+    Serial.print("Luftdruck: ");
+    Serial.println(receiver.getPressure());
+    Serial.print("Feuchtigkeit: ");
+    Serial.println(receiver.getHumidity());
+    Serial.print("Luftqualität: ");
+    Serial.println(receiver.getAirQuality());
+    Serial.print("Lichtintensität: ");
+    Serial.println(receiver.getLightIntensity());
+    Serial.print("Regen-Sensor: ");
+    Serial.println(receiver.getRainSensor() ? "Ja" : "Nein");
+
+    delay(1000);  // Kurze Verzögerung vor dem nächsten Empfangsversuch
+}
+// -------------------------------------
